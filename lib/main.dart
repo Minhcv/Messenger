@@ -4,6 +4,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:messenger/pages/login/login_page.dart';
 import 'package:messenger/pages/registration/registration_page.dart';
 import 'package:messenger/services/navigation_service.dart';
+import 'package:messenger/services/db_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +18,7 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    DbService.instance.createUserInfo("0123", "Minh", "minhnt3@gmail.com","http://www.pravatar.cc");
     return MaterialApp(
       title: 'Messenger',
       navigatorKey: NavigationService.instance.navigatorKey,

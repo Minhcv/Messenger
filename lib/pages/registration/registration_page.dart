@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:messenger/services/navigation_service.dart';
+import 'package:messenger/services/media_service.dart';
+import 'dart:io';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -14,6 +17,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
   late GlobalKey<FormState> _formKey;
 
+  XFile _image = XFile('');
   String _name = '';
   String _email = '';
   String _password = '';
@@ -98,19 +102,35 @@ class _RegistrationPageState extends State<RegistrationPage> {
   Widget _imageSelectorWidget() {
     return Align(
       alignment: Alignment.center,
-      child: Container(
-        height: _deviceHeight * 0.10,
-        width: _deviceWight * 0.10,
-        decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(500),
-            image: const DecorationImage(
-              fit: BoxFit.cover,
-              image: NetworkImage(
-                  "https://p7.hiclipart.com/preview/633/901/253/social-media-computer-icons-facebook-messenger-black-facebook-messenger-logo.jpg"),
-            )),
+      child: GestureDetector(
+        onTap: () async {
+          XFile? imageFile = await MediaService.instance.getImageFromLibrary();
+          setState(() {
+            _image = imageFile!;
+          });
+        },
+        child: Container(
+          height: _deviceHeight * 0.10,
+          width: _deviceWight * 0.10,
+          decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(500),
+              image: DecorationImage(
+                fit: BoxFit.cover,
+                image: image(),
+              )),
+        ),
       ),
     );
+  }
+
+  ImageProvider image() {
+    if (_image.path.isNotEmpty) {
+      return FileImage(File(_image.path));
+    } else {
+      return const NetworkImage(
+          "https://p7.hiclipart.com/preview/633/901/253/social-media-computer-icons-facebook-messenger-black-facebook-messenger-logo.jpg");
+    }
   }
 
   Widget _nameTextField() {
