@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:messenger/providers/auth_provider.dart';
+import 'package:messenger/services/cloud_storage_service.dart';
+import 'package:messenger/services/db_service.dart';
 import 'package:messenger/services/navigation_service.dart';
 import 'package:messenger/services/media_service.dart';
+import 'package:messenger/services/snackbar_service.dart';
 import 'dart:io';
+
+import 'package:provider/provider.dart';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -13,9 +19,10 @@ class RegistrationPage extends StatefulWidget {
 
 class _RegistrationPageState extends State<RegistrationPage> {
   late double _deviceHeight;
-  late double _deviceWight;
+  late double _deviceWidth;
 
   late GlobalKey<FormState> _formKey;
+  late AuthProvider _auth;
 
   XFile _image = XFile('');
   String _name = '';
@@ -29,28 +36,38 @@ class _RegistrationPageState extends State<RegistrationPage> {
   @override
   Widget build(BuildContext context) {
     _deviceHeight = MediaQuery.of(context).size.height;
-    _deviceWight = MediaQuery.of(context).size.width;
+    _deviceWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
         backgroundColor: Theme.of(context).backgroundColor,
         body: Container(
           alignment: Alignment.center,
-          child: registrationPageUI(),
+          child: ChangeNotifierProvider<AuthProvider>.value(
+            value: AuthProvider.instance,
+            child: registrationPageUI(),
+          ),
         ));
   }
 
   Widget registrationPageUI() {
-    return Container(
-      height: _deviceHeight * 0.75,
-      padding: EdgeInsets.symmetric(horizontal: _deviceWight * 0.10),
-      child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          mainAxisSize: MainAxisSize.max,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            _headingWidget(),
-            _inputForm(),
-          ]),
+    return Builder(
+      builder: (BuildContext _context) {
+        SnackbarService.instance.buildContext = _context;
+        _auth = Provider.of<AuthProvider>(_context);
+        return Container(
+          height: _deviceHeight * 0.75,
+          padding: EdgeInsets.symmetric(horizontal: _deviceWidth * 0.10),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            mainAxisSize: MainAxisSize.max,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              _headingWidget(),
+              _inputForm(),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -111,7 +128,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
         },
         child: Container(
           height: _deviceHeight * 0.10,
-          width: _deviceWight * 0.10,
+          width: _deviceWidth * 0.10,
           decoration: BoxDecoration(
               color: Colors.transparent,
               borderRadius: BorderRadius.circular(500),
@@ -199,19 +216,35 @@ class _RegistrationPageState extends State<RegistrationPage> {
   }
 
   Widget _registerButton() {
-    return Container(
-      margin: const EdgeInsets.only(top: 10),
-      height: _deviceHeight * 0.06,
-      width: _deviceWight,
-      child: MaterialButton(
-        onPressed: () {},
-        color: Colors.blue,
-        child: const Text(
-          "Register",
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-        ),
-      ),
-    );
+    return _auth.status != AuthStatus.authenticating
+        ? Container(
+            margin: const EdgeInsets.only(top: 10),
+            height: _deviceHeight * 0.06,
+            width: _deviceWidth,
+            child: MaterialButton(
+              onPressed: () {
+                if (_formKey.currentState!.validate() && _image != null) {
+                  _auth.registerUserWithEmailAndPassword(_email, _password,
+                      (String _uid) async {
+                    var _result = await CloudStorageService.instance
+                        .uploadUserImage(_uid, File(_image.path));
+                    var _imageURL = await _result!.ref.getDownloadURL();
+                    await DbService.instance
+                        .createUserInDB(_uid, _name, _email, _imageURL);
+                  });
+                }
+              },
+              color: Colors.blue,
+              child: const Text(
+                "Register",
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              ),
+            ),
+          )
+        : Align(
+            alignment: Alignment.center,
+            child: CircularProgressIndicator(),
+          );
   }
 
   Widget _backToLoginPageButton() {
@@ -221,7 +254,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
       },
       child: Container(
         height: _deviceHeight * 0.06,
-        width: _deviceWight,
+        width: _deviceWidth,
         child: Icon(
           Icons.arrow_back,
           size: 40,
